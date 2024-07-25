@@ -1,4 +1,7 @@
 fastapi
 uvicorn
 scikit-learn
-pydantic
+pickle
+pandas
+joblib
+matplotlib
