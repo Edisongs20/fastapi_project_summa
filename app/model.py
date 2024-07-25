@@ -1,12 +1,9 @@
 import pickle
 
-class Model:
-    def __init__(self, model_path: str):
-        with open(model_path, 'rb') as f:
-            self.model = pickle.load(f)
+data = {"key": "value"}
+with open('test.pkl', 'wb') as f:
+    pickle.dump(data, f)
 
-    def predict(self, data):
-        return self.model.predict(data)
-
-# Inicializa el modelo
-model = Model('path/to/your/model.pkl')
+with open('test.pkl', 'rb') as f:
+    loaded_data = pickle.load(f)
+print(loaded_data)
