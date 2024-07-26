@@ -22,20 +22,13 @@ class Model:
         except Exception as e:
             raise RuntimeError("Error during prediction: " + str(e))
         
-# Obtener la ruta del modelo desde una variable de entorno o usar un valor por defecto
+# Obtener la ruta del modelo desde una variable de entorno
 model_path = os.getenv('DATASET_MODEL')
-
-try:
-    model = Model(model_path)
-except RuntimeError as e:
-    # Manejo de errores en la carga del modelo
-    print(f"Error loading model: {e}")
-    raise SystemExit("Exiting due to model load failure.")
 
 @app.get("/") 
 async def root():     
     
-    return {"mensaje":"esto es una prueba"} 
+    return {"Servidor corriendo FastAPI"} 
     
 if __name__ =="__main__":     
     import uvicorn    
