@@ -1,66 +1,55 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import pickle
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
 import os
+import json
+from dotenv import load_dotenv
+load_dotenv()
 
-app = FastAPI() 
+path_json_output = os.getenv("DATASET_JSON")
 
-# Cargar el modelo de manera segura
-# Cargar el modelo de manera segura
-class Model:
-    def __init__(self, model_path: str):
-        try:
-            with open(model_path, 'rb') as f:
-                self.model = pickle.load(f)
-        except FileNotFoundError:
-            raise RuntimeError(f"Model file not found: {model_path}")
-        except pickle.PickleError:
-            raise RuntimeError(f"Error loading model from: {model_path}")
+if path_json_output.startswith("code\\"):
+    path_json_output = path_json_output[5:]
 
-    def predict(self, data):
-        try:
-            return self.model.predict(data)
-        except Exception as e:
-            raise RuntimeError("Error during prediction: " + str(e))
-              
-# Obtener la ruta del modelo desde una variable de entorno o usar un valor por defecto
-model_path = os.getenv('DATASET_MODEL', 'trained_model.pkl')
+# Convertir a ruta absoluta
+path_json_output = os.path.abspath(path_json_output)
+print(f"Ruta absoluta corregida del archivo JSON: {path_json_output}")
 
-try:
-    model = Model(model_path)
-except RuntimeError as e:
-    print(f"Error loading model: {e}")
-    model = None
+if not os.path.exists(path_json_output):
+    print(f"Archivo NO encontrado en la ruta: {path_json_output}")
+else:
+    print(f"Archivo encontrado en la ruta: {path_json_output}")
 
-# Define las solicitudes y respuestas
-class PredictRequest(BaseModel):
-    feature1: float
-    feature2: float
+app = FastAPI()
 
-# Añade aquí todas las características necesarias
-class PredictResponse(BaseModel):
-    prediction: str
-    
-#metodo post    
-@app.post("/", response_model=PredictResponse)
-async def predict(request: PredictRequest):
-    if model is None:
-        raise HTTPException(status_code=500, detail="Model not available")
+@app.get("/")
+async def get_json():
+    if not os.path.exists(path_json_output):
+        raise HTTPException(status_code=404, detail="Archivo JSON no encontrado")
     
     try:
-        # Preprocesa los datos si es necesario
-        data = [request.feature1, request.feature2]
-        prediction = model.predict([data])
-        return PredictResponse(prediction=str(prediction[0]))
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        with open(path_json_output, 'r') as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Error al leer el archivo JSON")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error inesperado: {str(e)}")
 
-#metodo get
-@app.get("/") 
-async def root():     
-    
-    return {"Servidor corriendo FastAPI"} 
-    
-if __name__ =="__main__":     
-    import uvicorn    
+    return JSONResponse(content=data)
+
+@app.post("/dataset")
+async def upload_dataset(file: UploadFile = File(...)):
+    # Guardar el archivo JSON recibido
+    file_path = path_json_output
+    try:
+        with open(file_path, 'w') as f:
+            content = await file.read()
+            f.write(content.decode('utf-8'))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving file: {e}")
+
+    return {"filename": file.filename, "detail": "File uploaded successfully"}
+
+if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
